@@ -1,6 +1,6 @@
 import 'package:flutter_tiktok/pages/userDetailPage.dart';
 import 'package:flutter_tiktok/style/style.dart';
-import 'package:flutter_tiktok/views/topToolRow.dart';
+import 'package:flutter_tiktok/widgets/topToolRow.dart';
 import 'package:flutter/material.dart';
 import 'package:tapped/tapped.dart';
 

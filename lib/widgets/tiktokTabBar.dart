@@ -1,12 +1,10 @@
 
 import 'package:flutter_tiktok/style/style.dart';
-import 'package:flutter_tiktok/views/selectText.dart';
+import 'package:flutter_tiktok/widgets/selectText.dart';
 import 'package:flutter/material.dart';
 
 enum TikTokPageTag {
   home,
-  follow,
-  msg,
   me,
 }
 
@@ -39,15 +37,7 @@ class TikTokTabBar extends StatelessWidget {
             onTap: () => onTabSwitch?.call(TikTokPageTag.home),
           ),
         ),
-        Expanded(
-          child: GestureDetector(
-            child: SelectText(
-              isSelect: current == TikTokPageTag.follow,
-              title: '关注',
-            ),
-            onTap: () => onTabSwitch?.call(TikTokPageTag.follow),
-          ),
-        ),
+
         Expanded(
           child: GestureDetector(
             child: Icon(
@@ -55,15 +45,6 @@ class TikTokTabBar extends StatelessWidget {
               size: 32,
             ),
             onTap: () => onAddButton?.call(),
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            child: SelectText(
-              isSelect: current == TikTokPageTag.msg,
-              title: '消息',
-            ),
-            onTap: () => onTabSwitch?.call(TikTokPageTag.msg),
           ),
         ),
         Expanded(

@@ -1,5 +1,5 @@
 import 'package:flutter_tiktok/style/style.dart';
-import 'package:flutter_tiktok/views/tilTokAppBar.dart';
+import 'package:flutter_tiktok/widgets/tilTokAppBar.dart';
 import 'package:flutter/material.dart';
 import 'package:tapped/tapped.dart';
 

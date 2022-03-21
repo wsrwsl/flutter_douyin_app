@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter_tiktok/mock/video.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_tiktok/model/commonModel.dart';
 import 'package:video_player/video_player.dart';
 
 typedef LoadMoreVideo = Future<List<VPVideoController>> Function(
@@ -13,9 +14,9 @@ typedef LoadMoreVideo = Future<List<VPVideoController>> Function(
 /// 提供了预加载/释放/加载更多功能
 class TikTokVideoListController extends ChangeNotifier {
   TikTokVideoListController({
-    this.loadMoreCount = 1,
-    this.preloadCount = 3,
-    this.disposeCount = 5,
+    this.loadMoreCount = 2,
+    this.preloadCount = 4,
+    this.disposeCount = 7,
   });
 
   /// 到第几个触发预加载，例如：1:最后一个，2:倒数第二个
@@ -68,14 +69,14 @@ class TikTokVideoListController extends ChangeNotifier {
       }
     }
     // 快到最底部，添加更多视频
-    if (playerList.length - newIndex <= loadMoreCount + 1) {
-      _videoProvider?.call(newIndex, playerList).then(
-        (list) async {
-          playerList.addAll(list);
-          notifyListeners();
-        },
-      );
-    }
+    // if (playerList.length - newIndex <= loadMoreCount + 1) {
+    //   _videoProvider?.call(newIndex, playerList).then(
+    //     (list) async {
+    //       playerList.addAll(list);
+    //       notifyListeners();
+    //     },
+    //   );
+    // }
 
     // 完成
     index.value = target;

@@ -1,25 +1,21 @@
-import 'package:flutter_tiktok/mock/video.dart';
+import 'package:flutter_tiktok/api/commonApi.dart';
+import 'package:flutter_tiktok/global.dart';
+import 'package:flutter_tiktok/model/commonModel.dart';
 import 'package:flutter_tiktok/pages/cameraPage.dart';
-import 'package:flutter_tiktok/pages/followPage.dart';
-import 'package:flutter_tiktok/pages/searchPage.dart';
 import 'package:flutter_tiktok/pages/userPage.dart';
 import 'package:flutter_tiktok/style/physics.dart';
-import 'package:flutter_tiktok/views/tikTokCommentBottomSheet.dart';
-import 'package:flutter_tiktok/views/tikTokHeader.dart';
-import 'package:flutter_tiktok/views/tikTokScaffold.dart';
-import 'package:flutter_tiktok/views/tikTokVideo.dart';
-import 'package:flutter_tiktok/views/tikTokVideoButtonColumn.dart';
+import 'package:flutter_tiktok/widgets/PageRouteBuilderWidget.dart';
+import 'package:flutter_tiktok/widgets/carDetailWidget.dart';
+import 'package:flutter_tiktok/widgets/commonWidget.dart';
+import 'package:flutter_tiktok/widgets/tikTokHeader.dart';
+import 'package:flutter_tiktok/widgets/tikTokScaffold.dart';
+import 'package:flutter_tiktok/widgets/tikTokVideo.dart';
 import 'package:flutter_tiktok/controller/tikTokVideoListController.dart';
-import 'package:flutter_tiktok/views/tiktokTabBar.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter_tiktok/widgets/tiktokTabBar.dart';
 import 'package:flutter/material.dart';
-import 'package:safemap/safemap.dart';
+import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
+
 import 'package:video_player/video_player.dart';
-
-import 'msgPage.dart';
-
-/// 单独修改了bottomSheet组件的高度
-import 'package:flutter_tiktok/other/bottomSheet.dart' as CustomBottomSheet;
 
 class HomePage extends StatefulWidget {
   @override
@@ -40,6 +36,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   List<UserVideo> videoDataList = [];
 
+  late DateTime preTime;
+  late DateTime currentTime;
+  int preIndex = 0;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state != AppLifecycleState.resumed) {
@@ -54,9 +54,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    videoDataList = UserVideo.fetchVideo();
+  void hindleRefreshVideo() {
     WidgetsBinding.instance!.addObserver(this);
     _videoListController.init(
       pageController: _pageController,
@@ -64,7 +62,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           .map(
             (e) => VPVideoController(
               videoInfo: e,
-              builder: () => VideoPlayerController.network(e.url),
+              builder: () => VideoPlayerController.network(e.videoUrl ?? ""),
             ),
           )
           .toList(),
@@ -73,7 +71,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             .map(
               (e) => VPVideoController(
                 videoInfo: e,
-                builder: () => VideoPlayerController.network(e.url),
+                builder: () => VideoPlayerController.network(e.videoUrl ?? ""),
               ),
             )
             .toList();
@@ -91,7 +89,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
       },
     );
+    preTime = DateTime.now();
+  }
 
+  void init() async {
+    videoDataList = await Api.fetchVideo();
+    hindleRefreshVideo();
+  }
+
+  @override
+  void initState() {
+    init();
     super.initState();
   }
 
@@ -101,12 +109,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     switch (tabBarType) {
       case TikTokPageTag.home:
-        break;
-      case TikTokPageTag.follow:
-        currentPage = FollowPage();
-        break;
-      case TikTokPageTag.msg:
-        currentPage = MsgPage();
         break;
       case TikTokPageTag.me:
         currentPage = UserPage(isSelfPage: true);
@@ -150,14 +152,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         tkController.animateToMiddle();
       },
     );
-    var searchPage = SearchPage(
-      onPop: tkController.animateToMiddle,
-    );
 
     var header = tabBarType == TikTokPageTag.home
         ? TikTokHeader(
-            onSearch: () {
-              tkController.animateToLeft();
+            setState: () {
+              setState(() {
+                hindleRefreshVideo();
+              });
             },
           )
         : Container();
@@ -168,87 +169,122 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       hasBottomPadding: hasBackground,
       tabBar: tikTokTabBar,
       header: header,
-      leftPage: searchPage,
       rightPage: userPage,
       enableGesture: tabBarType == TikTokPageTag.home,
-      // onPullDownRefresh: _fetchData,
-      page: Stack(
-        // index: currentPage == null ? 0 : 1,
-        children: <Widget>[
-          PageView.builder(
-            key: Key('home'),
-            physics: QuickerScrollPhysics(),
-            controller: _pageController,
-            scrollDirection: Axis.vertical,
-            itemCount: _videoListController.videoCount,
-            itemBuilder: (context, i) {
-              // 拼一个视频组件出来
-              bool isF = SafeMap(favoriteMap)[i].boolean ?? false;
-              var player = _videoListController.playerOfIndex(i)!;
-              var data = player.videoInfo!;
-              // 右侧按钮列
-              Widget buttons = TikTokButtonColumn(
-                isFavorite: isF,
-                onAvatar: () {
-                  tkController.animateToPage(TikTokPagePositon.right);
-                },
-                onFavorite: () {
-                  setState(() {
-                    favoriteMap[i] = !isF;
-                  });
-                  // showAboutDialog(context: context);
-                },
-                onComment: () {
-                  CustomBottomSheet.showModalBottomSheet(
-                    backgroundColor: Colors.white.withOpacity(0),
-                    context: context,
-                    builder: (BuildContext context) =>
-                        TikTokCommentBottomSheet(),
-                  );
-                },
-                onShare: () {},
-              );
-              // video
-              Widget currentVideo = Center(
-                child: AspectRatio(
-                  aspectRatio: player.controller.value.aspectRatio,
-                  child: VideoPlayer(player.controller),
-                ),
-              );
+      onPullDownRefresh: () {
+        setState(() {
+          init();
+        });
+      },
+      leftDown: () {
+        print("current=${currentIndex},len=${videoDataList.length}");
+        if(videoList.isEmpty||videoDataList.isEmpty){
+          return ;
+        }
+        hindleShowDialog(context, videoDataList[currentIndex]);
+      },
+      page: Obx(
+        () => videoList.isEmpty
+            ? Center(
+                child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LoadingCircular(size: 20),
+                  SizedBox(height: 6),
+                  Text(
+                    "暂无视频",
+                    style: TextStyle(fontSize: 12),
+                  )
+                ],
+              ))
+            : Stack(
+                // index: currentPage == null ? 0 : 1,
+                children: <Widget>[
+                  PageView.builder(
+                    key: Key('home+${DateTime.now().toString()}'),
+                    physics: QuickerScrollPhysics(),
+                    controller: _pageController,
+                    scrollDirection: Axis.vertical,
+                    itemCount: _videoListController.videoCount,
+                    onPageChanged: (index) async {
+                      print("index=${index}");
+                      preIndex = currentIndex;
+                      currentIndex = index;
+                      currentTime = DateTime.now();
+                      await hindleIsLove();
+                      preTime = currentTime;
+                    },
+                    itemBuilder: (context, i) {
+                      // 拼一个视频组件出来
+                      //bool isF = SafeMap(favoriteMap)[i].boolean ?? false;
+                      var player = _videoListController.playerOfIndex(i)!;
+                      var data = player.videoInfo!;
+                      // video
+                      Widget currentVideo = Center(
+                        child: AspectRatio(
+                          aspectRatio: player.controller.value.aspectRatio,
+                          child: VideoPlayer(player.controller),
+                        ),
+                      );
 
-              currentVideo = TikTokVideoPage(
-                // 手势播放与自然播放都会产生暂停按钮状态变化，待处理
-                hidePauseIcon: !player.showPauseIcon.value,
-                aspectRatio: 9 / 16.0,
-                key: Key(data.url + '$i'),
-                tag: data.url,
-                bottomPadding: hasBottomPadding ? 16.0 : 16.0,
-                userInfoWidget: VideoUserInfo(
-                  desc: data.desc,
-                  bottomPadding: hasBottomPadding ? 16.0 : 50.0,
-                ),
-                onSingleTap: () async {
-                  if (player.controller.value.isPlaying) {
-                    await player.pause();
-                  } else {
-                    await player.play();
-                  }
-                  setState(() {});
-                },
-                onAddFavorite: () {
-                  setState(() {
-                    favoriteMap[i] = true;
-                  });
-                },
-                rightButtonColumn: buttons,
-                video: currentVideo,
-              );
-              return currentVideo;
-            },
-          ),
-          currentPage ?? Container(),
-        ],
+                      currentVideo = TikTokVideoPage(
+                        // 手势播放与自然播放都会产生暂停按钮状态变化，待处理
+                        hidePauseIcon: !player.showPauseIcon.value,
+                        aspectRatio: 9 / 16.0,
+                        key: Key(data.videoUrl ?? "" + '$i'),
+                        tag: data.videoUrl ?? "",
+                        bottomPadding: hasBottomPadding ? 16.0 : 16.0,
+                        leftBottomDetail: Container(),
+                        onSingleTap: () async {
+                          print("onSingle");
+                          if (player.controller.value.isPlaying) {
+                            print("isPlay");
+                            await player.pause();
+                          } else {
+                            print("isNotPlay");
+                            await player.play();
+                          }
+                          setState(() {});
+                        },
+                        onAddFavorite: () {
+                          setState(() {
+                            favoriteMap[i] = true;
+                          });
+                        },
+                        video: currentVideo,
+                      );
+                      return currentVideo;
+                    },
+                  ),
+                  currentPage ?? Container(),
+                ],
+              ),
       ),
     );
+  }
+
+  void hindleShowDialog(BuildContext context, UserVideo userVideo) {
+    double width = MediaQuery.of(context).size.width / 2;
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return CarDetailWidget(
+            userVideo: userVideo,
+            width: width,
+            deleteCallBack: init,
+          );
+        });
+  }
+
+  Future<void> hindleIsLove() async {
+    var player = _videoListController.playerOfIndex(preIndex)!;
+    var time = await player.controller.position;
+    print(preTime);
+    print(currentTime);
+    int differSeconds = currentTime.difference(preTime).inSeconds;
+    print("differ=${differSeconds}");
+    if (differSeconds >= 2) {
+      Api.updateUserLove(userVideo: videoList[preIndex]);
+    }
   }
 }

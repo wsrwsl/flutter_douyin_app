@@ -1,4 +1,5 @@
 import 'package:flutter_tiktok/pages/homePage.dart';
+import 'package:flutter_tiktok/pages/loginPage.dart';
 import 'package:flutter_tiktok/style/style.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +40,8 @@ class MyApp extends StatelessWidget {
           bodyText1: StandardTextStyle.normal,
         ),
       ),
-      home: HomePage(),
+      home: SignPage(pageType: AccountPageType.login,),
+      //HomePage(),
     );
   }
 }

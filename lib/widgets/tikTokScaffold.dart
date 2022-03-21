@@ -20,10 +20,6 @@ class TikTokScaffoldController extends ValueNotifier<TikTokPagePositon> {
     return _onAnimateToPage?.call(pagePositon);
   }
 
-  Future? animateToLeft() {
-    return _onAnimateToPage?.call(TikTokPagePositon.left);
-  }
-
   Future? animateToRight() {
     return _onAnimateToPage?.call(TikTokPagePositon.right);
   }
@@ -44,9 +40,6 @@ class TikTokScaffold extends StatefulWidget {
   /// 底部导航
   final Widget? tabBar;
 
-  /// 左滑页面
-  final Widget? leftPage;
-
   /// 右滑页面
   final Widget? rightPage;
 
@@ -60,11 +53,11 @@ class TikTokScaffold extends StatefulWidget {
 
   final Function()? onPullDownRefresh;
 
+  final void Function()? leftDown;
   const TikTokScaffold({
     Key? key,
     this.header,
     this.tabBar,
-    this.leftPage,
     this.rightPage,
     this.hasBottomPadding: false,
     this.page,
@@ -72,6 +65,7 @@ class TikTokScaffold extends StatefulWidget {
     this.enableGesture,
     this.onPullDownRefresh,
     this.controller,
+    this.leftDown,
   }) : super(key: key);
 
   @override
@@ -86,6 +80,7 @@ class _TikTokScaffoldState extends State<TikTokScaffold>
   late Animation<double> animationY;
   double offsetX = 0.0;
   double offsetY = 0.0;
+
   // int currentIndex = 0;
   double inMiddle = 0;
 
@@ -101,12 +96,17 @@ class _TikTokScaffoldState extends State<TikTokScaffold>
     }
     switch (p) {
       case TikTokPagePositon.left:
-        await animateTo(screenWidth!);
+        offsetX=0;
+        widget.leftDown==null?(await animateTo()):widget.leftDown!();
         break;
       case TikTokPagePositon.middle:
+        print("middle");
+        print("offsetX=${offsetX},secreen=${screenWidth}");
         await animateTo();
         break;
       case TikTokPagePositon.right:
+        print("right");
+        print("offsetX=${offsetX},secreen=${screenWidth}");
         await animateTo(-screenWidth!);
         break;
     }
@@ -121,10 +121,6 @@ class _TikTokScaffoldState extends State<TikTokScaffold>
     // 先定义正常结构
     Widget body = Stack(
       children: <Widget>[
-        _LeftPageTransform(
-          offsetX: offsetX,
-          content: widget.leftPage,
-        ),
         _MiddlePage(
           absorbing: absorbing,
           onTopDrag: () {
@@ -157,20 +153,27 @@ class _TikTokScaffoldState extends State<TikTokScaffold>
           setState(() {});
         }
       },
-      onHorizontalDragEnd: (details) => onHorizontalDragEnd(
-        details,
-        screenWidth,
-      ),
+      onHorizontalDragEnd: (details) {
+        print("水平方向滑动结束");
+        return onHorizontalDragEnd(
+          details,
+          screenWidth,
+        );
+      },
       // 水平方向滑动开始
       onHorizontalDragStart: (_) {
         if (!widget.enableGesture!) return;
+        print("水平方向滑动开始");
         animationControllerX?.stop();
         animationControllerY?.stop();
       },
-      onHorizontalDragUpdate: (details) => onHorizontalDragUpdate(
-        details,
-        screenWidth,
-      ),
+      onHorizontalDragUpdate: (details) {
+        //print("水平方向滑动更新");
+        return onHorizontalDragUpdate(
+          details,
+          screenWidth,
+        );
+      },
       child: body,
     );
     body = WillPopScope(
@@ -195,9 +198,9 @@ class _TikTokScaffoldState extends State<TikTokScaffold>
   void onHorizontalDragUpdate(details, screenWidth) {
     if (!widget.enableGesture!) return;
     // 控制 offsetX 的值在 -screenWidth 到 screenWidth 之间
-    if (offsetX + details.delta.dx >= screenWidth) {
+    if (offsetX + details.delta.dx >= 0) {
       setState(() {
-        offsetX = screenWidth;
+        offsetX = 1;
       });
     } else if (offsetX + details.delta.dx <= -screenWidth) {
       setState(() {
@@ -231,12 +234,15 @@ class _TikTokScaffoldState extends State<TikTokScaffold>
     // 当滑动停止的时候 根据 offsetX 的偏移量进行动画
     if (offsetX.abs() < screenWidth * 0.5) {
       // 中间页面
+      print("中间页面");
       return animateToPage(TikTokPagePositon.middle);
     } else if (offsetX > 0) {
       // 去左边页面
+      print("左边页面");
       return animateToPage(TikTokPagePositon.left);
     } else {
       // 去右边页面
+      print("右边页面");
       return animateToPage(TikTokPagePositon.right);
     }
   }
@@ -345,6 +351,7 @@ class _MiddlePage extends StatelessWidget {
     required this.tabBar,
     this.page,
   }) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     Widget tabBarContainer = tabBar ??
@@ -389,7 +396,8 @@ class _MiddlePage extends StatelessWidget {
           offset: Offset(0, offsetY!),
           child: SafeArea(
             child: Container(
-              height: 44,
+              //height: 44,
+              padding: EdgeInsets.only(top: 16),
               child: header ?? Placeholder(color: Colors.green),
             ),
           ),
@@ -437,29 +445,6 @@ class _MiddlePage extends StatelessWidget {
           child: middle,
         ),
       ),
-    );
-  }
-}
-
-/// 左侧Widget
-///
-/// 通过 [Transform.scale] 进行根据 [offsetX] 缩放
-/// 最小 0.88 最大为 1
-class _LeftPageTransform extends StatelessWidget {
-  final double? offsetX;
-  final Widget? content;
-
-  const _LeftPageTransform({Key? key, this.offsetX, this.content})
-      : super(key: key);
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Transform.scale(
-      scale: 0.88 + 0.12 * offsetX! / screenWidth < 0.88
-          ? 0.88
-          : 0.88 + 0.12 * offsetX! / screenWidth,
-      child: content ?? Placeholder(color: Colors.pink),
     );
   }
 }
